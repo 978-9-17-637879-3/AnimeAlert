@@ -1,6 +1,6 @@
-const Discord = require("discord.js");
-const { MongoClient, Collection } = require("mongodb");
-const path = require("path");
+import * as Discord from "discord.js";
+import { MongoClient, Collection } from "mongodb";
+import * as path from "path";
 
 require("dotenv").config({ path: path.join(__dirname, "../.env") });
 
@@ -17,20 +17,22 @@ const discordClient = new Discord.Client({
   ],
 });
 
-let animeListCollection: typeof Collection = null;
 interface AnimeListEntry {
   id: number;
   title: string;
-  subscribers: (typeof Discord.Snowflake)[];
+  subscribers: Discord.Snowflake[];
 }
-let airingScheduleCollection: typeof Collection = null;
+let animeListCollection: Collection<AnimeListEntry> = null;
+
 interface AiringScheduleEntry {
   id: number;
   episode: number;
   airingAt: number;
   announced: boolean;
 }
-let announceChannel: typeof Discord.TextChannel = null;
+let airingScheduleCollection: Collection<AiringScheduleEntry> = null;
+
+let announceChannel: Discord.BaseGuildTextChannel = null;
 
 async function checkSubscriptions(animeEntries: AnimeListEntry[]) {
   for (const anime of animeEntries) {
@@ -105,14 +107,17 @@ async function subscriptionLoop() {
 
 discordClient.on("ready", async () => {
   console.log("Discord bot connected!");
+
+  // TODO: make this type safe by fetching guild first
+  // @ts-ignore
   announceChannel = await discordClient.channels.fetch(
-    process.env.ANNOUNCE_CHANNEL
+    process.env.ANNOUNCE_CHANNEL,
   );
 
   subscriptionLoop();
 });
 
-discordClient.on("messageCreate", async (message: typeof Discord.Message) => {
+discordClient.on("messageCreate", async (message: Discord.Message<boolean>) => {
   if (message.author.bot) {
     return;
   }
@@ -282,10 +287,10 @@ discordClient.on("messageCreate", async (message: typeof Discord.Message) => {
 mongoClient.connect().then(() => {
   console.log("MongoDB client connected!");
 
-  animeListCollection = mongoClient.db("animealert").collection("anime");
+  animeListCollection = mongoClient.db("animealert").collection<AnimeListEntry>("anime");
   airingScheduleCollection = mongoClient
     .db("animealert")
-    .collection("airingSchedule");
+    .collection<AiringScheduleEntry>("airingSchedule");
 
   discordClient.login(process.env.DISCORD_TOKEN);
 });
