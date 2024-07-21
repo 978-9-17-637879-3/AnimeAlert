@@ -71,27 +71,50 @@ export enum AiringDisplayMode {
 }
 
 function unixTimestampToDiscordTimestamp(unixTimestamp: number): string {
-  return `<t:${unixTimestamp}>`
+  return `<t:${unixTimestamp}>`;
 }
 
-export async function getAiringString(animeId: number, animeTitle: string, displayMode: AiringDisplayMode): Promise<string> {
-const { latestAiring, status: airingStatusResponseCode } =
+async function getAiringTimeString(
+  animeId,
+  displayMode: AiringDisplayMode
+): Promise<string> {
+  const { latestAiring, status: airingStatusResponseCode } =
     await latestAiringEpisode(animeId);
 
   if (airingStatusResponseCode === 404) {
-    return "Not airing";
+    switch (displayMode) {
+      case AiringDisplayMode.CONCISE:
+        return ": not airing";
+      case AiringDisplayMode.VERBOSE:
+        return " is not airing";
+    }
   }
 
   if (airingStatusResponseCode !== 200) {
-    return `Got status code ${airingStatusResponseCode}`;
+    switch (displayMode) {
+      case AiringDisplayMode.CONCISE:
+        return `: got error code ${airingStatusResponseCode}`;
+      case AiringDisplayMode.VERBOSE:
+        return ` airs at ${airingStatusResponseCode}`;
+    }
   }
 
-  const discordTimestamp = unixTimestampToDiscordTimestamp(latestAiring["airingAt"]);
+  const discordTimestamp = unixTimestampToDiscordTimestamp(
+    latestAiring["airingAt"]
+  );
 
   switch (displayMode) {
     case AiringDisplayMode.CONCISE:
-      return `**${animeTitle}**: ${discordTimestamp}`;
+      return `: ${discordTimestamp}`;
     case AiringDisplayMode.VERBOSE:
-      return `**${animeTitle}** airs at ${discordTimestamp}`;
+      return ` airs at ${discordTimestamp}`;
   }
+}
+
+export async function getAiringString(
+  animeId: number,
+  animeTitle: string,
+  displayMode: AiringDisplayMode
+): Promise<string> {
+  return `**${animeTitle}**${await getAiringTimeString(animeId, displayMode)}`;
 }
