@@ -1,6 +1,6 @@
 const axios = require("axios");
 
-module.exports.getAnilistIDFromSearchString = async (searchString: string) => {
+export async function getAnilistIDFromSearchString(searchString: string) {
   const searchQuery = `query ($search: String) { # Define which variables will be used in the query (id)
     Media (search: $search, type: ANIME) { # Insert our variables into the query arguments (id) (type: ANIME is hard-coded in the query)
       id
@@ -35,9 +35,9 @@ module.exports.getAnilistIDFromSearchString = async (searchString: string) => {
     id: searchResponse.data["data"]["Media"]["id"],
     status: searchResponse.status,
   };
-};
+}
 
-module.exports.latestAiringEpisode = async (animeId: number) => {
+export async function latestAiringEpisode(animeId: number) {
   const scheduleQuery =
     "query ($mediaId: Int) {AiringSchedule (mediaId: $mediaId, notYetAired: true){episode airingAt}}";
   const scheduleVariables = { mediaId: animeId };
@@ -63,4 +63,35 @@ module.exports.latestAiringEpisode = async (animeId: number) => {
     latestAiring: scheduleResponse.data["data"]["AiringSchedule"],
     status: scheduleResponse.status,
   };
-};
+}
+
+export enum AiringDisplayMode {
+  CONCISE,
+  VERBOSE,
+}
+
+function unixTimestampToDiscordTimestamp(unixTimestamp: number): string {
+  return `<t:${unixTimestamp}>`
+}
+
+export async function getAiringString(animeId: number, animeTitle: string, displayMode: AiringDisplayMode): Promise<string> {
+const { latestAiring, status: airingStatusResponseCode } =
+    await latestAiringEpisode(animeId);
+
+  if (airingStatusResponseCode === 404) {
+    return "Not airing";
+  }
+
+  if (airingStatusResponseCode !== 200) {
+    return `Got status code ${airingStatusResponseCode}`;
+  }
+
+  const discordTimestamp = unixTimestampToDiscordTimestamp(latestAiring["airingAt"]);
+
+  switch (displayMode) {
+    case AiringDisplayMode.CONCISE:
+      return `**${animeTitle}**: ${discordTimestamp}`;
+    case AiringDisplayMode.VERBOSE:
+      return `**${animeTitle}** airs at ${discordTimestamp}`;
+  }
+}

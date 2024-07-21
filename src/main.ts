@@ -1,10 +1,11 @@
 import * as Discord from "discord.js";
 import { MongoClient, Collection } from "mongodb";
-import * as path from "path";
+import { join as joinPath } from "path";
+import {config as dotEnvConfig} from "dotenv";
 
-require("dotenv").config({ path: path.join(__dirname, "../.env") });
+import * as utils from "./utils";
 
-const utils = require(path.join(__dirname, "utils"));
+dotEnvConfig({ path: joinPath(__dirname, "../.env") });
 
 const mongoClient = new MongoClient("mongodb://127.0.0.1:27017");
 
@@ -117,7 +118,7 @@ discordClient.on("ready", async () => {
   subscriptionLoop();
 });
 
-discordClient.on("messageCreate", async (message: Discord.Message<boolean>) => {
+discordClient.on("messageCreate", async (message: Discord.Message<boolean>): Promise<Discord.Message> => {
   if (message.author.bot) {
     return;
   }
@@ -135,23 +136,12 @@ discordClient.on("messageCreate", async (message: Discord.Message<boolean>) => {
         id: animeId,
         status: animeIdResponseCode,
       } = await utils.getAnilistIDFromSearchString(search);
-
+    
       if (animeId === null) {
         return message.reply(`Got status code ${animeIdResponseCode}`);
       }
 
-      const { latestAiring, status: airingStatusResponseCode } =
-        await utils.latestAiringEpisode(animeId);
-
-      if (airingStatusResponseCode === 404) {
-        return message.reply("Not airing");
-      }
-
-      if (airingStatusResponseCode !== 200) {
-        return message.reply(`Got status code ${airingStatusResponseCode}`);
-      }
-
-      return message.reply(`${title} airs on <t:${latestAiring["airingAt"]}>`);
+      return message.reply(await utils.getAiringString(animeId, title, utils.AiringDisplayMode.VERBOSE));
     } catch (e) {
       console.error(e);
       return message.reply("error check log");
@@ -258,20 +248,7 @@ discordClient.on("messageCreate", async (message: Discord.Message<boolean>) => {
     }
 
     const subscribedStrings = await Promise.all(
-      subscribed.map(async (anime): Promise<String> => {
-        const { latestAiring, status: airingStatusResponseCode } =
-          await utils.latestAiringEpisode(anime.id);
-
-        if (airingStatusResponseCode === 404) {
-          return `\`${anime.title}\`: Not airing`;
-        }
-
-        if (airingStatusResponseCode !== 200) {
-          return `\`${anime.title}\`: Got status code ${airingStatusResponseCode}`;
-        }
-
-        return `\`${anime.title}\`: <t:${latestAiring["airingAt"]}>`;
-      })
+      subscribed.map(async (anime): Promise<String> => utils.getAiringString(anime.id, anime.title, utils.AiringDisplayMode.CONCISE))
     );
 
     return message.reply(
@@ -280,7 +257,7 @@ discordClient.on("messageCreate", async (message: Discord.Message<boolean>) => {
   }
 
   if (command.toLowerCase() === "!ok") {
-    await message.reply("ok");
+    await message.reply("ok");Number
   }
 });
 
