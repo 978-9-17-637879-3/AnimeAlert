@@ -29,8 +29,6 @@
 
     // Specify the root directory of TypeScript source files
     "rootDir": "src",
-
-    "sourceMap":  true
   },
   // Specify the files or patterns to include in the compilation
   "include": ["src/**/*"],
