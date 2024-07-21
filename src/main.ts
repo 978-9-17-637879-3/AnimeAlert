@@ -111,7 +111,7 @@ discordClient.on("ready", async () => {
   // TODO: make this type safe by fetching guild first
   // @ts-ignore
   announceChannel = await discordClient.channels.fetch(
-    process.env.ANNOUNCE_CHANNEL,
+    process.env.ANNOUNCE_CHANNEL
   );
 
   subscriptionLoop();
@@ -287,7 +287,9 @@ discordClient.on("messageCreate", async (message: Discord.Message<boolean>) => {
 mongoClient.connect().then(() => {
   console.log("MongoDB client connected!");
 
-  animeListCollection = mongoClient.db("animealert").collection<AnimeListEntry>("anime");
+  animeListCollection = mongoClient
+    .db("animealert")
+    .collection<AnimeListEntry>("anime");
   airingScheduleCollection = mongoClient
     .db("animealert")
     .collection<AiringScheduleEntry>("airingSchedule");
