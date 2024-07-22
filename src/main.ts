@@ -286,7 +286,7 @@ discordClient.on(
         const {
           id: animeId,
           status: animeIdResponseCode,
-        } = await utils.getAnilistIDFromSearchString(search);
+        } = await utils.getAnilistIDFromSearchString(search, false);
 
         if (animeId === null) {
           return message.reply(`Got status code ${animeIdResponseCode}`);

@@ -1,13 +1,62 @@
 const axios = require("axios");
 
-export async function getAnilistIDFromSearchString(searchString: string) {
+export async function findFurthestSequelFromAnilistID(originalID: number) {
+  const searchQuery = `query ($id: Int) { # Define which variables will be used in the query (id)
+    Media (id: $id, type: ANIME) { # Insert our variables into the query arguments (id) (type: ANIME is hard-coded in the query)
+      title {
+        romaji
+      }
+        
+      relations {
+        edges {
+          relationType(version: 2)
+          node {
+            id
+          }
+        }
+      }
+    }
+  }`;
+
+  const searchVariables = {
+    id: originalID,
+  };
+
+  const searchResponse = await axios({
+    url: "https://graphql.anilist.co",
+    method: "POST",
+    data: {
+      query: searchQuery,
+      variables: searchVariables,
+    },
+    validateStatus: () => true, // prevent axios from throwing an error when it gets an error HTTP code
+  });
+
+  if (searchResponse.status !== 200) {
+    return { title: null, id: null, status: searchResponse.status };
+  }
+
+  const sequelID = searchResponse.data["data"]["Media"]["relations"]["edges"].find(edge => edge.relationType === "SEQUEL")?.node?.id
+
+  if (sequelID === undefined) {
+    return {
+      title: searchResponse.data["data"]["Media"]["title"]["romaji"],
+      id: originalID,
+      status: searchResponse.status,
+    };
+  }
+
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  return findFurthestSequelFromAnilistID(sequelID);
+}
+
+export async function getAnilistIDFromSearchString(searchString: string, furthestSequel: boolean = true) {
   const searchQuery = `query ($search: String) { # Define which variables will be used in the query (id)
     Media (search: $search, type: ANIME) { # Insert our variables into the query arguments (id) (type: ANIME is hard-coded in the query)
       id
       title {
         romaji
-        english
-        native
       }
     }
   }`;
@@ -28,6 +77,10 @@ export async function getAnilistIDFromSearchString(searchString: string) {
 
   if (searchResponse.status !== 200) {
     return { title: null, id: null, status: searchResponse.status };
+  }
+
+  if (furthestSequel) {
+    return findFurthestSequelFromAnilistID(searchResponse.data["data"]["Media"]["id"]);
   }
 
   return {
