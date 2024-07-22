@@ -1,6 +1,9 @@
 const axios = require("axios");
 
-export async function findFurthestSequelFromAnilistID(originalID: number) {
+export async function findFurthestSequelFromAnilistID(
+  originalID: number,
+  seenIdsMap: Object
+) {
   const searchQuery = `query ($id: Int) { # Define which variables will be used in the query (id)
     Media (id: $id, type: ANIME) { # Insert our variables into the query arguments (id) (type: ANIME is hard-coded in the query)
       title {
@@ -36,7 +39,13 @@ export async function findFurthestSequelFromAnilistID(originalID: number) {
     return { title: null, id: null, status: searchResponse.status };
   }
 
-  const sequelID = searchResponse.data["data"]["Media"]["relations"]["edges"].find(edge => edge.relationType === "SEQUEL")?.node?.id
+  const sequelID = searchResponse.data["data"]["Media"]["relations"][
+    "edges"
+  ].find((edge) => edge.relationType === "SEQUEL")?.node?.id;
+
+  if (seenIdsMap[sequelID] === true) {
+    return { title: null, id: null, status: 600 };
+  }
 
   if (sequelID === undefined) {
     return {
@@ -46,12 +55,15 @@ export async function findFurthestSequelFromAnilistID(originalID: number) {
     };
   }
 
-  await new Promise(resolve => setTimeout(resolve, 100));
+  seenIdsMap[sequelID] = true;
 
-  return findFurthestSequelFromAnilistID(sequelID);
+  return findFurthestSequelFromAnilistID(sequelID, seenIdsMap);
 }
 
-export async function getAnilistIDFromSearchString(searchString: string, furthestSequel: boolean = true) {
+export async function getAnilistIDFromSearchString(
+  searchString: string,
+  furthestSequel: boolean = true
+) {
   const searchQuery = `query ($search: String) { # Define which variables will be used in the query (id)
     Media (search: $search, type: ANIME) { # Insert our variables into the query arguments (id) (type: ANIME is hard-coded in the query)
       id
@@ -80,7 +92,13 @@ export async function getAnilistIDFromSearchString(searchString: string, furthes
   }
 
   if (furthestSequel) {
-    return findFurthestSequelFromAnilistID(searchResponse.data["data"]["Media"]["id"]);
+    // Cycle detection
+    const seenIdsMap = {};
+
+    return findFurthestSequelFromAnilistID(
+      searchResponse.data["data"]["Media"]["id"],
+      seenIdsMap
+    );
   }
 
   return {
