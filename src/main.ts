@@ -225,20 +225,26 @@ discordClient.on(
           return message.reply(`Got status code ${animeIdRequestStatus}`);
         }
 
-        const isSubscribed =
-          (await animeListCollection.findOne({
-            id: animeId,
-            subscribers: [message.author.id],
-          })) !== null;
+        const animeListEntry = await animeListCollection.findOne({
+          id: animeId,
+          subscribers: [message.author.id],
+        });
 
-        if (!isSubscribed) {
+        if (animeListEntry === null) {
           return message.reply("You're not subscribed");
         }
 
-        await animeListCollection.updateOne(
-          { id: animeId },
-          { $pull: { subscribers: message.author.id } }
-        );
+        // the only subscriber is the current user, so when they unsubscribe we can delete the entry
+        if (animeListEntry.subscribers.length === 1) {
+          await animeListCollection.deleteOne({_id: animeListEntry._id});
+          await airingScheduleCollection.deleteOne({id: animeListEntry.id});
+        } else {
+          await animeListCollection.updateOne(
+            { id: animeId },
+            { $pull: { subscribers: message.author.id } }
+          );
+        }
+
         await message.reply(`Unsubscribed you from **${title}**`);
       } catch (e) {
         console.error(e);
@@ -272,6 +278,29 @@ discordClient.on(
         `Your subscriptions:\n${subscribedStrings.join("\n")}`
       );
     }
+
+    if (command.toLowerCase() === "!link") {
+      const search = args.join(" ");
+
+      try {
+        const {
+          id: animeId,
+          status: animeIdResponseCode,
+        } = await utils.getAnilistIDFromSearchString(search);
+
+        if (animeId === null) {
+          return message.reply(`Got status code ${animeIdResponseCode}`);
+        }
+
+        return message.reply(
+          `https://anilist.co/anime/${animeId}`
+        );
+      } catch (e) {
+        console.error(e);
+        return message.reply("error check log");
+      }
+    }
+
 
     if (command.toLowerCase() === "!ok") {
       await message.reply("ok");
