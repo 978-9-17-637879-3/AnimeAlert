@@ -132,124 +132,107 @@ discordClient.on(
     if (command.toLowerCase() === "!airs") {
       const search = args.join(" ");
 
-      try {
-        const {
-          title,
-          id: animeId,
-          status: animeIdResponseCode,
-        } = await utils.getAnilistIDFromSearchString(search);
+      const {
+        title,
+        id: animeId,
+        status: animeIdResponseCode,
+      } = await utils.getAnilistIDFromSearchString(search);
 
-        if (animeId === null) {
-          return message.reply(`Got status code ${animeIdResponseCode}`);
-        }
-
-        return message.reply(
-          await utils.getAiringString(
-            animeId,
-            title,
-            utils.AiringDisplayMode.VERBOSE
-          )
-        );
-      } catch (e) {
-        console.error(e);
-        return message.reply("error check log");
+      if (animeId === null) {
+        return message.reply(`Got status code ${animeIdResponseCode}`);
       }
+
+      return message.reply(
+        await utils.getAiringString(
+          animeId,
+          title,
+          utils.AiringDisplayMode.VERBOSE
+        )
+      );
     }
 
     if (command.toLowerCase() === "!subscribe") {
       const search = args.join(" ");
 
-      try {
-        const {
-          title: animeTitle,
-          id: animeId,
-          status: animeIdRequestStatus,
-        } = await utils.getAnilistIDFromSearchString(search);
+      const {
+        title: animeTitle,
+        id: animeId,
+        status: animeIdRequestStatus,
+      } = await utils.getAnilistIDFromSearchString(search);
 
-        if (animeId === null) {
-          return message.reply(`Got status code ${animeIdRequestStatus}`);
-        }
-
-        const isSubscribed =
-          (await animeListCollection.findOne({
-            id: animeId,
-            subscribers: [message.author.id],
-          })) !== null;
-
-        if (isSubscribed) {
-          return message.reply("You're already subscribed");
-        }
-
-        if (
-          (await airingScheduleCollection.findOne({ id: animeId })) === null
-        ) {
-          const { latestAiring, status: airingStatusResponseCode } =
-            await utils.latestAiringEpisode(animeId);
-
-          if (latestAiring.episode === -1 && airingStatusResponseCode !== 404) {
-            return message.reply(`Got status code ${airingStatusResponseCode}`);
-          }
-
-          await airingScheduleCollection.insertOne({
-            id: animeId,
-            episode: latestAiring.episode,
-            airingAt: latestAiring.airingAt,
-            announced: latestAiring.episode === -1,
-          });
-        }
-
-        await animeListCollection.updateOne(
-          { id: animeId, title: animeTitle },
-          { $push: { subscribers: message.author.id } },
-          { upsert: true }
-        );
-
-        await message.reply(`Subscribed you to **${animeTitle}**`);
-      } catch (e) {
-        console.error(e);
-        return message.reply("error check log");
+      if (animeId === null) {
+        return message.reply(`Got status code ${animeIdRequestStatus}`);
       }
+
+      const isSubscribed =
+        (await animeListCollection.findOne({
+          id: animeId,
+          subscribers: [message.author.id],
+        })) !== null;
+
+      if (isSubscribed) {
+        return message.reply("You're already subscribed");
+      }
+
+      if ((await airingScheduleCollection.findOne({ id: animeId })) === null) {
+        const { latestAiring, status: airingStatusResponseCode } =
+          await utils.latestAiringEpisode(animeId);
+
+        if (latestAiring.episode === -1 && airingStatusResponseCode !== 404) {
+          return message.reply(`Got status code ${airingStatusResponseCode}`);
+        }
+
+        await airingScheduleCollection.insertOne({
+          id: animeId,
+          episode: latestAiring.episode,
+          airingAt: latestAiring.airingAt,
+          announced: latestAiring.episode === -1,
+        });
+      }
+
+      await animeListCollection.updateOne(
+        { id: animeId, title: animeTitle },
+        { $push: { subscribers: message.author.id } },
+        { upsert: true }
+      );
+
+      await message.reply(`Subscribed you to **${animeTitle}**`);
     }
 
     if (command.toLowerCase() === "!unsubscribe") {
       const search = args.join(" ");
 
-      try {
-        const {
-          title,
-          id: animeId,
-          status: animeIdRequestStatus,
-        } = await utils.getAnilistIDFromSearchString(search);
+      const {
+        title,
+        id: animeId,
+        status: animeIdRequestStatus,
+      } = await utils.getAnilistIDFromSearchString(search);
 
-        if (animeId === null) {
-          return message.reply(`Got status code ${animeIdRequestStatus}`);
-        }
-
-        const animeListEntry = await animeListCollection.findOne({
-          id: animeId,
-          subscribers: [message.author.id],
-        });
-
-        if (animeListEntry === null) {
-          return message.reply("You're not subscribed");
-        }
-
-        // the only subscriber is the current user, so when they unsubscribe we can delete the entry
-        if (animeListEntry.subscribers.length === 1) {
-          await animeListCollection.deleteOne({ _id: animeListEntry._id });
-          await airingScheduleCollection.deleteOne({ id: animeListEntry.id });
-        } else {
-          await animeListCollection.updateOne(
-            { id: animeId },
-            { $pull: { subscribers: message.author.id } }
-          );
-        }
-
-        await message.reply(`Unsubscribed you from **${title}**`);
-      } catch (e) {
-        console.error(e);
-        return message.reply("error check log");
+      if (animeId === null) {
+        return message.reply(`Got status code ${animeIdRequestStatus}`);
       }
+
+      const animeListEntry = await animeListCollection.findOne({
+        id: animeId,
+        subscribers: [message.author.id],
+      });
+
+      if (animeListEntry === null) {
+        return message.reply("You're not subscribed");
+      }
+
+      // the only subscriber is the current user, so when they unsubscribe we can delete the entry
+      if (animeListEntry.subscribers.length === 1) {
+        await animeListCollection.deleteOne({ _id: animeListEntry._id });
+        await airingScheduleCollection.deleteOne({ id: animeListEntry.id });
+      } else {
+        await animeListCollection.updateOne(
+          { id: animeId },
+          { $pull: { subscribers: message.author.id } }
+        );
+      }
+
+      await message.reply(`Unsubscribed you from **${title}**`);
     }
 
     if (command.toLowerCase() === "!subscribed") {
@@ -282,19 +265,14 @@ discordClient.on(
     if (command.toLowerCase() === "!link") {
       const search = args.join(" ");
 
-      try {
-        const { id: animeId, status: animeIdResponseCode } =
-          await utils.getAnilistIDFromSearchString(search, false);
+      const { id: animeId, status: animeIdResponseCode } =
+        await utils.getAnilistIDFromSearchString(search, false);
 
-        if (animeId === null) {
-          return message.reply(`Got status code ${animeIdResponseCode}`);
-        }
-
-        return message.reply(`https://anilist.co/anime/${animeId}`);
-      } catch (e) {
-        console.error(e);
-        return message.reply("error check log");
+      if (animeId === null) {
+        return message.reply(`Got status code ${animeIdResponseCode}`);
       }
+
+      return message.reply(`https://anilist.co/anime/${animeId}`);
     }
 
     if (command.toLowerCase() === "!ok") {
