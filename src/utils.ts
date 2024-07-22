@@ -105,9 +105,9 @@ async function getAiringTimeString(
 
   switch (displayMode) {
     case AiringDisplayMode.CONCISE:
-      return `: ${discordTimestamp}`;
+      return ` episode ${latestAiring["episode"]} @ ${discordTimestamp}`;
     case AiringDisplayMode.VERBOSE:
-      return ` airs at ${discordTimestamp}`;
+      return ` episode ${latestAiring["episode"]} airs at ${discordTimestamp}`;
   }
 }
 
